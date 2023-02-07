@@ -3,30 +3,31 @@ import os
 import random
 import sys
 import time
-#test123
-#cornbread
+from pygame import mixer
+from configparser import ConfigParser
+
+config = ConfigParser()
+config.read('config.ini')
 
 pygame.font.init()
 pygame.init()
 
 pygame.display.set_caption("Window") #window name
-
 keys = pygame.key.get_pressed()
+
 screenWidth = 1280
 screenHeight = 720
 black = (0,0,0)
 red = (255,0,0)
 white = (255,255,255)
 
-#game variables
-rounds = 1
-
-
-
-
 win = pygame.display.set_mode((screenWidth,screenHeight))
+
+
+#import images and store in a variable
 bg = pygame.image.load('Assets/background.png').convert_alpha()
 game_over = pygame.image.load('Assets/game_over.png').convert_alpha()
+continueImg = pygame.image.load('Assets/buttons/continue.png').convert_alpha()
 startImg = pygame.image.load('Assets/buttons/start_game.png').convert_alpha()
 quitImg = pygame.image.load('Assets/buttons/quit.png').convert_alpha()
 creditsImg = pygame.image.load('Assets/buttons/credits.png').convert_alpha()
@@ -35,7 +36,6 @@ attackImg = pygame.image.load('Assets/buttons/attack.png').convert_alpha()
 healImg = pygame.image.load('Assets/buttons/heal.png').convert_alpha()
 inventoryImg = pygame.image.load('Assets/buttons/inventory.png').convert_alpha()
 
-#bg = pygame.image.load(os.path.join('Assets','background.png'))
 
 FPS = 60
 clock = pygame.time.Clock()
@@ -46,10 +46,11 @@ class Fighter():
         self.hp = hp
         self.strength = strength
         self.image = pygame.image.load(image).convert_alpha()
-#attack method that can be called to deal damage to enemy or player
+    #attack method that can be called to deal damage to enemy or player
     def attack(self, target):
         damage = self.strength
         target.hp -= damage
+
     
 #heal method that will heal the player unless their hp is already full and if their hp is not full it still can not exceed 100
     def heal(self):
@@ -60,6 +61,7 @@ class Fighter():
         # else:
         #     print('hp already full')
         self.hp +=5
+
     
     def enemyHeal():
         pass
@@ -96,22 +98,25 @@ class Button():
 
 
 
-
-#player.attack(enemy1)
-#print(enemy1.hp)
-# enemyList = []
-# enemyList.append(enemy1)
-# enemyList.append(enemy2)
-
-
 def menu():
+
+    savegameExist = config.getboolean('section_a', 'savegameExist')
+    currentEnemyNumber = config.getint('section_a', 'currentEnemyNumber')
+    enemyHealth = config.getint('section_a', 'enemyHealth')
+    playerHealth = config.getint('section_a', 'playerHealth')
+    currentTurn = config.getint('section_a', 'currentTurn')
+
+    #import sounds
+    button_sound_1 = mixer.Sound('Assets/sounds/button_sound_1.wav')
     
+
     run = True
     #win.fill((250,0,0))
     win.blit(bg, (0, 0))
-    startBtn = Button((screenWidth//2) - 330, (screenHeight//2) - 270, startImg, 0.9)
-    quitBtn = Button((screenWidth//2) - 180, (screenHeight//2) +150, quitImg, 0.8)
-    creditsBtn = Button((screenWidth//2) - 260, (screenHeight//2) -50, creditsImg, 0.8)
+    continue_g = Button((screenWidth//2) - 360, (screenHeight//2) - 300, continueImg, 0.9)
+    startBtn = Button((screenWidth//2) - 330, (screenHeight//2) - 120, startImg, 0.9)
+    creditsBtn = Button((screenWidth//2) - 260, (screenHeight//2) +50, creditsImg, 0.8)
+    quitBtn = Button((screenWidth//2) - 180, (screenHeight//2) +220, quitImg, 0.8)
     while run:
     
         clock.tick(FPS)
@@ -121,28 +126,42 @@ def menu():
                 run = False
         
         if startBtn.draw():
+            button_sound_1.play()
             run = False
             gameplay()
 
         if creditsBtn.draw():
+            button_sound_1.play()
             run = False
             creditsMenu()
 
         if quitBtn.draw():
+            #button_sound_1.play()
             run = False
 
+        if continue_g.draw():
+            button_sound_1.play()
+            run = False
+            gameplay(currentEnemyNumber,enemyHealth,playerHealth,currentTurn)
 
         pygame.display.update()
-
-def gameplay():
+# currentEnemyNumber,enemyHealth,playerHealth,currentTurn
+def gameplay(currentEnemyNumber=None,enemyHealth=None,playerHealth=None,currentTurn=None):
     run = True
 
-    player = Fighter('you',200,10,'Assets/player.png')
+    #import sounds
+    attack_sound_1 = mixer.Sound('Assets/sounds/attack_sound_1.wav')
+
+    playerHealth = 100 if playerHealth is None else playerHealth 
+    player = Fighter('you',playerHealth,10,'Assets/player.png') # 200
     enemy1 = Fighter('blood gargoyle',30,10,'Assets/enemies/blood_gargoyle.png')
     enemy2 = Fighter('leg day knight',22,5,'Assets/enemies/leg_day_knight.png')
     enemyList = []
     enemyList.append(enemy1)
     enemyList.append(enemy2)
+
+    if currentEnemyNumber != None:
+        enemyList[currentEnemyNumber].hp = enemyHealth 
 
     attackBtn = Button((screenWidth//2) - 600, (screenHeight//2) +120, attackImg, 0.7)
     healBtn = Button((screenWidth//2) - 600, (screenHeight//2) +230, healImg, 0.7)
@@ -151,18 +170,16 @@ def gameplay():
             pass
         if healBtn.draw():
             pass
-
-    turn = 1
-    x = 2
-    i = 0
+    # turn = 1
+    turn = 1 if currentTurn is None else currentTurn 
+    
+    # i = 0
+    i = 0 if currentEnemyNumber is None else currentEnemyNumber 
     action_cooldown = 0
     action_wait_time = 90
     
-    imageIncrement = 0
     #win.blit(player.image,(100,100))
     while run:
-        
-        
         win.fill((20,20,0))
         font = pygame.font.SysFont('freesansbold.ttf', 30)
         surface = font.render(player.name + ' HP: ' + str(player.hp), False, (250, 250, 250))
@@ -176,7 +193,6 @@ def gameplay():
         
             if event.type == pygame.QUIT:
                 run = False
-        
             
         #checks if the enemies hp goes below 0 and increments to the next enemy
         if enemyList[i].hp <= 0:
@@ -201,11 +217,10 @@ def gameplay():
             gameOver()
         
         #if the turn modulus x returns a value of 1 then it is the players turn to pick a move
-        if turn % x == 1:
-            
-
+        if turn % 2 == 1:
             if attackBtn.draw():
-                timer = 2000
+                attack_sound_1.play()
+                timer = 200
                 sceneExit = False
                 player.attack(enemyList[i])
                 print('Enemy HP: ' + str(enemyList[i].hp))
@@ -220,11 +235,7 @@ def gameplay():
                     timer -= passed_time
                     if timer <= 0:
                         sceneExit = True
-                
-                    
                 turn+=1
-                
-                    
 
             if healBtn.draw():
                 player.heal()
@@ -232,7 +243,7 @@ def gameplay():
                 turn+=1
 
         #if the turn modulus x returns a value of 0 then it is the enemies turn to pick a move
-        if turn % x == 0:
+        if turn % 2 == 0:
             action_cooldown +=1
             rand = random.randint(0,1)
             #print(action_cooldown)
@@ -248,15 +259,21 @@ def gameplay():
                     turn+=1
                     action_cooldown = 0
 
-            #this code draws the button too the screen while its the enemies turn but makes the button not functional
+            #this code draws the button too the screen while its the enemies turn but makes the buttons not functional
             if attackBtn.draw():
                  pass
             if healBtn.draw():
                  pass
-    
+        
+        config.set('section_a', 'currentEnemyNumber', 'True')
+        config.set('section_a', 'currentEnemyNumber', str(i))
+        config.set('section_a', 'enemyHealth', str(enemyList[i].hp))
+        config.set('section_a', 'playerHealth', str(player.hp))
+        config.set('section_a', 'currentTurn', str(turn))
+        with open('config.ini', 'w') as configfile:
+            config.write(configfile)
         pygame.display.update()
     
-
 def creditsMenu():
     run = True
     win.blit(bg, (0, 0))
@@ -292,7 +309,6 @@ def gameOver():
         
 
         pygame.display.update()
-
-    
+ 
 menu()
 pygame.quit()
