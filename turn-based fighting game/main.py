@@ -35,17 +35,50 @@ backImg = pygame.image.load('Assets/buttons/back.png').convert_alpha()
 attackImg = pygame.image.load('Assets/buttons/attack.png').convert_alpha()
 healImg = pygame.image.load('Assets/buttons/heal.png').convert_alpha()
 inventoryImg = pygame.image.load('Assets/buttons/inventory.png').convert_alpha()
+spellsImg = pygame.image.load('Assets/buttons/spells.png').convert_alpha()
+spells_menu = pygame.image.load('Assets/spells_menu.png').convert_alpha()
+flameImg = pygame.image.load('Assets/buttons/flame.png').convert_alpha()
+darkVeilImg = pygame.image.load('Assets/buttons/dark_veil.png').convert_alpha()
 
 
 FPS = 60
 clock = pygame.time.Clock()
 
-class Fighter():
+class Spells():
+    def __init__(self, name, mana_cost, coin_cost, description):
+        self.name = name
+        self.mana_cost = mana_cost
+        self.coin_cost = coin_cost
+        self.description = description
+
+    
+    def useMinorHeal(self):
+        self.hp+=20
+    
+    def useFlame(self,player,target):
+        damage = player.strength
+        target.hp -= damage
+    
+    def useDarkVeil(self, target):
+        reduction = 1
+        if target.strength > 5:
+            target.strength -= reduction
+        else:
+            print('enemy strength cannot go lower')
+    
+    def holyShield(self):
+        pass
+        
+        
+
+
+class Fighter(Spells):
     def __init__(self, name, hp, strength, image):
         self.name = name
         self.hp = hp
         self.strength = strength
         self.image = pygame.image.load(image).convert_alpha()
+        self.coins = 0
     #attack method that can be called to deal damage to enemy or player
     def attack(self, target):
         damage = self.strength
@@ -97,6 +130,19 @@ class Button():
         return action
 
 
+        
+
+# testEnemy = Fighter('testEnemy',100,10,'Assets/player.png')        
+# testPlayer = Fighter('you',100,10,'Assets/player.png')
+# testPlayer.useMinorHeal()
+# testPlayer.useFlame(testPlayer,testEnemy)
+# print(testPlayer.hp)
+# print(testEnemy.hp)
+
+
+
+
+
 
 def menu():
 
@@ -105,12 +151,15 @@ def menu():
     enemyHealth = config.getint('section_a', 'enemyHealth')
     playerHealth = config.getint('section_a', 'playerHealth')
     currentTurn = config.getint('section_a', 'currentTurn')
+    playerStrength = config.getint('section_a', 'playerStrength')
+    enemyStrength = config.getint('section_a', 'EnemyStrength')
 
     #import sounds
     button_sound_1 = mixer.Sound('Assets/sounds/button_sound_1.wav')
     
 
     run = True
+    
     #win.fill((250,0,0))
     win.blit(bg, (0, 0))
     continue_g = Button((screenWidth//2) - 360, (screenHeight//2) - 300, continueImg, 0.9)
@@ -142,20 +191,25 @@ def menu():
         if continue_g.draw():
             button_sound_1.play()
             run = False
-            gameplay(currentEnemyNumber,enemyHealth,playerHealth,currentTurn)
+            gameplay(currentEnemyNumber,enemyHealth,playerHealth,currentTurn,enemyStrength,playerStrength)
 
         pygame.display.update()
 # currentEnemyNumber,enemyHealth,playerHealth,currentTurn
-def gameplay(currentEnemyNumber=None,enemyHealth=None,playerHealth=None,currentTurn=None):
+def gameplay(currentEnemyNumber=None,enemyHealth=None,playerHealth=None,currentTurn=None, enemyStrength=None, playerStrength=None):
     run = True
+    menuOpen = False
+    disable = False
 
     #import sounds
     attack_sound_1 = mixer.Sound('Assets/sounds/attack_sound_1.wav')
 
     playerHealth = 100 if playerHealth is None else playerHealth 
-    player = Fighter('you',playerHealth,10,'Assets/player.png') # 200
-    enemy1 = Fighter('blood gargoyle',30,10,'Assets/enemies/blood_gargoyle.png')
-    enemy2 = Fighter('leg day knight',22,5,'Assets/enemies/leg_day_knight.png')
+    playerStrength = 10 if playerStrength is None else playerStrength
+    enemyStrength = 10 if enemyStrength is None else enemyStrength
+
+    player = Fighter('you',playerHealth,playerStrength,'Assets/player.png') # 200
+    enemy1 = Fighter('blood gargoyle',30,enemyStrength,'Assets/enemies/blood_gargoyle.png')
+    enemy2 = Fighter('leg day knight',22,enemyStrength-5,'Assets/enemies/leg_day_knight.png')
     enemyList = []
     enemyList.append(enemy1)
     enemyList.append(enemy2)
@@ -165,15 +219,22 @@ def gameplay(currentEnemyNumber=None,enemyHealth=None,playerHealth=None,currentT
 
     attackBtn = Button((screenWidth//2) - 600, (screenHeight//2) +120, attackImg, 0.7)
     healBtn = Button((screenWidth//2) - 600, (screenHeight//2) +230, healImg, 0.7)
+    spellsBtn = Button((screenWidth//2) - 250, (screenHeight//2) +120, spellsImg, 0.7)
+    backBtn = Button((screenWidth//2) +300, (screenHeight//2) +300, backImg, 0.7)
+    flamesBtn = Button((screenWidth//2) +320, (screenHeight//2) -100, flameImg, 0.6)
+    darkVeilBtn = Button((screenWidth//2) +320, (screenHeight//2) - 40, darkVeilImg, 0.6)
+
     def drawNonFunctionalButtons():
         if attackBtn.draw():
             pass
         if healBtn.draw():
             pass
+        if spellsBtn.draw():
+            pass
     # turn = 1
     turn = 1 if currentTurn is None else currentTurn 
     
-    # i = 0
+    # i increments the enemy number
     i = 0 if currentEnemyNumber is None else currentEnemyNumber 
     action_cooldown = 0
     action_wait_time = 90
@@ -186,7 +247,7 @@ def gameplay(currentEnemyNumber=None,enemyHealth=None,playerHealth=None,currentT
         win.blit(surface, (1000,20))
         surface2 = font.render(enemyList[i].name + ' HP: ' + str(enemyList[i].hp), False, (250, 250, 250))
         win.blit(surface2, (1000,50))
-
+        win.blit(enemyList[i].image,(100,100))
         #print(newImage)
         clock.tick(FPS)
         for event in pygame.event.get():
@@ -205,11 +266,13 @@ def gameplay(currentEnemyNumber=None,enemyHealth=None,playerHealth=None,currentT
                 i=0
             #if it is not the last enemy in the list the game continues and turn counter is set back to 1
             else:
-                print('next round')
+                print('next floor')
                 turn = 1
 
-
-        win.blit(enemyList[i].image,(100,100))
+        #this will open the shop menu every 5 rounds
+        if i % 5 == 0 and i != 0:
+            pass
+        
 
         #if players hp goes to 0 or below the game ends
         if player.hp <= 0:
@@ -224,7 +287,7 @@ def gameplay(currentEnemyNumber=None,enemyHealth=None,playerHealth=None,currentT
                 sceneExit = False
                 player.attack(enemyList[i])
                 print('Enemy HP: ' + str(enemyList[i].hp))
-                #displays attack notification for set amount of time
+                #displays attack notification for set amount of time in timer variable
                 while not sceneExit:
                     #win.fill((20,20,0))
                     drawNonFunctionalButtons()
@@ -241,6 +304,34 @@ def gameplay(currentEnemyNumber=None,enemyHealth=None,playerHealth=None,currentT
                 player.heal()
                 print( player.name + ' HP: ' +  str(player.hp))
                 turn+=1
+                
+
+            if spellsBtn.draw():
+                menuOpen = True
+            
+            #opens spell menu
+            if menuOpen == True:
+                win.blit(spells_menu, (943,230))
+                if flamesBtn.draw():
+                    player.useFlame(player,enemyList[i])
+                    print(enemyList[i].name + ' HP: '+ str(enemyList[i].hp))
+                    turn+=1
+                    menuOpen = False
+                if darkVeilBtn.draw():
+                    if enemyList[i].strength > 5:
+                        player.useDarkVeil(enemyList[i])
+                        print(enemyList[i].name + ' strength has been lowered to:  '+ str(enemyList[i].strength))
+                        turn+=1
+                        menuOpen = False
+                    else:
+                        print('Enemy strength cannot go any lower')
+                        turn+=0
+                if backBtn.draw():
+                    menuOpen = False
+                    
+                    
+                    
+
 
         #if the turn modulus x returns a value of 0 then it is the enemies turn to pick a move
         if turn % 2 == 0:
@@ -260,16 +351,15 @@ def gameplay(currentEnemyNumber=None,enemyHealth=None,playerHealth=None,currentT
                     action_cooldown = 0
 
             #this code draws the button too the screen while its the enemies turn but makes the buttons not functional
-            if attackBtn.draw():
-                 pass
-            if healBtn.draw():
-                 pass
+            drawNonFunctionalButtons()
         
         config.set('section_a', 'currentEnemyNumber', 'True')
         config.set('section_a', 'currentEnemyNumber', str(i))
         config.set('section_a', 'enemyHealth', str(enemyList[i].hp))
         config.set('section_a', 'playerHealth', str(player.hp))
         config.set('section_a', 'currentTurn', str(turn))
+        config.set('section_a', 'playerStrength', str(player.strength))
+        config.set('section_a', 'enemyStrength', str(enemyList[i].strength))
         with open('config.ini', 'w') as configfile:
             config.write(configfile)
         pygame.display.update()
