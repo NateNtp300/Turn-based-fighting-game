@@ -1,8 +1,4 @@
-import pygame
-import os
-import random
-import sys
-import time
+import pygame, os, random, sys, time
 from pygame import mixer
 from configparser import ConfigParser
 
@@ -15,8 +11,15 @@ pygame.init()
 pygame.display.set_caption("Window") #window name
 keys = pygame.key.get_pressed()
 
-screenWidth = 1280
-screenHeight = 720
+# screenWidth = pygame.display.get_desktop_sizes()[0][0]
+# screenHeight = pygame.display.get_desktop_sizes()[0][1]
+## fullscreen window (for 1080p)
+screenWidth = pygame.display.get_desktop_sizes()[0][0] * 1
+screenHeight = pygame.display.get_desktop_sizes()[0][1] * 0.94 
+## window
+# screenWidth = 1280
+# screenHeight = 720
+
 black = (0,0,0)
 red = (255,0,0)
 white = (255,255,255)
@@ -97,9 +100,6 @@ class Player(Spells):
         #     print('hp already full')
         self.hp +=5
 
-        
-
-
 class Enemy(Spells):
     def __init__(self, name, hp, strength, image):
         self.name = name
@@ -120,9 +120,7 @@ class Enemy(Spells):
         #         self.hp = 100
         # else:
         #     print('hp already full')
-        self.hp +=5
-
-    
+        self.hp +=5   
 
 class Button():
     def __init__(self, x, y, image, scale):
@@ -173,6 +171,9 @@ def menu():
     currentTurn = config.getint('section_a', 'currentTurn')
     playerStrength = config.getint('section_a', 'playerStrength')
     enemyStrength = config.getint('section_a', 'EnemyStrength')
+    currentRound = config.getint('section_a', 'currentRound')
+    currentCoins = config.getint('section_a', 'currentcoins')
+    darkVeilbought = config.getboolean('section_a', 'darkVeilbought')
 
     #import sounds
     button_sound_1 = mixer.Sound('Assets/sounds/button_sound_1.wav')
@@ -211,19 +212,21 @@ def menu():
         if continue_g.draw():
             button_sound_1.play()
             run = False
-            gameplay(currentEnemyNumber,enemyHealth,playerHealth,currentTurn,enemyStrength,playerStrength)
+            gameplay(currentEnemyNumber,enemyHealth,playerHealth,currentTurn,enemyStrength,playerStrength,currentRound,currentCoins, darkVeilbought)
 
         pygame.display.update()
 # currentEnemyNumber,enemyHealth,playerHealth,currentTurn
-def gameplay(currentEnemyNumber=None,enemyHealth=None,playerHealth=None,currentTurn=None, enemyStrength=None, playerStrength=None):
+def gameplay(currentEnemyNumber=None,enemyHealth=None,playerHealth=None,currentTurn=None, enemyStrength=None, playerStrength=None, currentRound=None, currentCoins=None, darkVeilbought=None):
     run = True
     spellsMenuOpen = False
     shopOpen = False
-    round = 0
+    
 
     #import sounds
     attack_sound_1 = mixer.Sound('Assets/sounds/attack_sound_1.wav')
 
+    
+    round = 0 if currentRound is None else currentRound
     playerHealth = 100 if playerHealth is None else playerHealth
     playerMana = 100 
     playerEnergy = 100 
@@ -235,6 +238,10 @@ def gameplay(currentEnemyNumber=None,enemyHealth=None,playerHealth=None,currentT
     purpleFlames = Spells('Purple Flames', 20, 20, 'Searing purple flames that deal 50 dark damage', False)
 
     player = Player('you',playerHealth,playerStrength,playerMana,playerEnergy,'Assets/player.png') # 200
+
+    player.coins = 0 if currentCoins is None else currentCoins
+    darkVeil.isBought = False if darkVeilbought is None else darkVeilbought
+
     enemy1 = Enemy('Blood gargoyle',30,enemyStrength,'Assets/enemies/blood_gargoyle.png')
     enemy2 = Enemy('Leg day knight',22,enemyStrength-5,'Assets/enemies/leg_day_knight.png')
     enemy3 = Enemy('Pissed Alien',5,enemyStrength,'Assets/enemies/pissed_alien.png')
@@ -250,8 +257,6 @@ def gameplay(currentEnemyNumber=None,enemyHealth=None,playerHealth=None,currentT
     enemyList.append(enemy5)
     enemyList.append(enemy6)
     enemyList.append(enemy7)
-
-    
 
     if currentEnemyNumber != None:
         enemyList[currentEnemyNumber].hp = enemyHealth 
@@ -351,7 +356,6 @@ def gameplay(currentEnemyNumber=None,enemyHealth=None,playerHealth=None,currentT
             if backBtn.draw():
                 shopOpen = False
                 round+=1
-            
         
 
         #if players hp goes to 0 or below the game ends
@@ -412,10 +416,6 @@ def gameplay(currentEnemyNumber=None,enemyHealth=None,playerHealth=None,currentT
                             turn+=0
                 if backBtn.draw():
                     spellsMenuOpen = False
-                    
-                    
-                    
-
 
         #if the turn modulus x returns a value of 0 then it is the enemies turn to pick a move
         if turn % 2 == 0 and shopOpen == False:
@@ -444,6 +444,9 @@ def gameplay(currentEnemyNumber=None,enemyHealth=None,playerHealth=None,currentT
         config.set('section_a', 'currentTurn', str(turn))
         config.set('section_a', 'playerStrength', str(player.strength))
         config.set('section_a', 'enemyStrength', str(enemyList[i].strength))
+        config.set('section_a', 'currentRound', str(round))
+        config.set('section_a', 'currentcoins', str(player.coins))
+        config.set('section_a', 'darkVeilbought', str(darkVeil.isBought))
         with open('config.ini', 'w') as configfile:
             config.write(configfile)
         pygame.display.update()
