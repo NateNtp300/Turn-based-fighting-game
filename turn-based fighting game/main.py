@@ -15,7 +15,7 @@ keys = pygame.key.get_pressed()
 # screenHeight = pygame.display.get_desktop_sizes()[0][1]
 ## fullscreen window (for 1080p)
 screenWidth = pygame.display.get_desktop_sizes()[0][0] * 1
-screenHeight = pygame.display.get_desktop_sizes()[0][1] * 0.94 
+screenHeight = pygame.display.get_desktop_sizes()[0][1] * 0.93
 ## window
 # screenWidth = 1280
 # screenHeight = 720
@@ -40,9 +40,13 @@ healImg = pygame.image.load('Assets/buttons/heal.png').convert_alpha()
 inventoryImg = pygame.image.load('Assets/buttons/inventory.png').convert_alpha()
 spellsImg = pygame.image.load('Assets/buttons/spells.png').convert_alpha()
 spells_menu = pygame.image.load('Assets/spells_menu.png').convert_alpha()
+inventory_menu = pygame.image.load('Assets/inventory_menu.png').convert_alpha()
 flameImg = pygame.image.load('Assets/buttons/flame.png').convert_alpha()
 darkVeilImg = pygame.image.load('Assets/buttons/dark_veil.png').convert_alpha()
+purple_flames_img = pygame.image.load('Assets/spells/purple_flames_btn.png').convert_alpha()
 buyImg = pygame.image.load('Assets/buttons/buy.png').convert_alpha()
+bomb_img = pygame.image.load('Assets/items/bomb_btn.png').convert_alpha()
+purple_banana_img = pygame.image.load('Assets/items/purple_banana_btn.png').convert_alpha()
 
 shopMenu_purpleFlames = pygame.image.load('Assets/spells/shopMenu_purpleFlames.png').convert_alpha()
 
@@ -64,6 +68,10 @@ class Spells():
     def useFlame(self,player,target):
         damage = player.strength
         target.hp -= damage
+
+    def usePurpleFlame(self,target):
+        damage = 50
+        target.hp -= damage
     
     def useDarkVeil(self, target):
         reduction = 1
@@ -75,7 +83,23 @@ class Spells():
     def holyShield(self):
         pass
 
-class Player(Spells):
+class Items():
+    def __init__(self, name, description, coin_cost, quantity, isBought):
+        self.name = name
+        self.description = description
+        self.coin_cost = coin_cost
+        self.quantity = quantity
+        self.isBought = isBought
+
+    def useBomb(self,target):
+        damage = 30
+        target.hp -= damage
+    
+    def usePurpleBanana(player):
+        player.hp += 30
+
+
+class Player(Spells, Items):
     def __init__(self, name, hp, strength, mana, energy, image):
         self.name = name
         self.hp = hp
@@ -183,15 +207,15 @@ def menu():
     
     #win.fill((250,0,0))
     win.blit(bg, (0, 0))
-    continue_g = Button((screenWidth//2) - 360, (screenHeight//2) - 300, continueImg, 0.9)
-    startBtn = Button((screenWidth//2) - 330, (screenHeight//2) - 120, startImg, 0.9)
-    creditsBtn = Button((screenWidth//2) - 260, (screenHeight//2) +50, creditsImg, 0.8)
-    quitBtn = Button((screenWidth//2) - 180, (screenHeight//2) +220, quitImg, 0.8)
-    while run:
+    continue_g = Button((screenWidth/2) - (continueImg.get_width()/2), (screenHeight//2) - 330, continueImg, 1)
+    startBtn = Button((screenWidth/2) - (startImg.get_width()/2), (screenHeight//2) - 150, startImg, 1)
+    creditsBtn = Button((screenWidth//2) - (creditsImg.get_width()/2), (screenHeight//2) +30, creditsImg, 1)
+    quitBtn = Button((screenWidth//2) - (quitImg.get_width()/2), (screenHeight//2) +210, quitImg, 1)
     
+    
+    while run:
         clock.tick(FPS)
         for event in pygame.event.get():
-        
             if event.type == pygame.QUIT:
                 run = False
         
@@ -217,14 +241,24 @@ def menu():
         pygame.display.update()
 # currentEnemyNumber,enemyHealth,playerHealth,currentTurn
 def gameplay(currentEnemyNumber=None,enemyHealth=None,playerHealth=None,currentTurn=None, enemyStrength=None, playerStrength=None, currentRound=None, currentCoins=None, darkVeilbought=None):
+    
+    global spellsMenuOpen, inventoryMenuOpen, turn, shopOpen, i, round, run, action_wait_time, action_cooldown
     run = True
     spellsMenuOpen = False
+    inventoryMenuOpen = False
     shopOpen = False
     
-
+    #turn keeps track of current turns during gameplay
+    turn = 1 if currentTurn is None else currentTurn 
+    
+    # i increments the enemy number
+    i = 0 if currentEnemyNumber is None else currentEnemyNumber 
+    
+    action_cooldown = 0
+    action_wait_time = 90
+    
     #import sounds
     attack_sound_1 = mixer.Sound('Assets/sounds/attack_sound_1.wav')
-
     
     round = 0 if currentRound is None else currentRound
     playerHealth = 100 if playerHealth is None else playerHealth
@@ -236,6 +270,9 @@ def gameplay(currentEnemyNumber=None,enemyHealth=None,playerHealth=None,currentT
     flame = Spells('Flame',10,30,'Deals minor fire damage to enemy', True)
     darkVeil = Spells('Dark Veil',10,30,'Lowers enemy strength by one', False)
     purpleFlames = Spells('Purple Flames', 20, 20, 'Searing purple flames that deal 50 dark damage', False)
+
+    bomb = Items('Bomb','Deals 30 damage to enemies and ignores their defence',10,2,True)
+    purple_banana = Items('Purple Banana','Heals 30 HP',10,2,True)
 
     player = Player('you',playerHealth,playerStrength,playerMana,playerEnergy,'Assets/player.png') # 200
 
@@ -250,27 +287,27 @@ def gameplay(currentEnemyNumber=None,enemyHealth=None,playerHealth=None,currentT
     enemy6 = Enemy('Veno the Traitor',22,enemyStrength-5,'Assets/enemies/veno_the_traitor.png')
     enemy7 = Enemy('Pissed Gnome',5,enemyStrength,'Assets/enemies/pissed_gnome.png')
     enemyList = []
-    enemyList.append(enemy1)
-    enemyList.append(enemy2)
-    enemyList.append(enemy3)
-    enemyList.append(enemy4)
-    enemyList.append(enemy5)
-    enemyList.append(enemy6)
-    enemyList.append(enemy7)
+    for x in enemy1, enemy2, enemy3, enemy4, enemy5, enemy6, enemy7:
+        enemyList.append(x)
+    
 
     if currentEnemyNumber != None:
         enemyList[currentEnemyNumber].hp = enemyHealth 
 
-    attackBtn = Button((screenWidth//2) - 600, (screenHeight//2) +120, attackImg, 0.7)
-    healBtn = Button((screenWidth//2) - 600, (screenHeight//2) +230, healImg, 0.7)
-    spellsBtn = Button((screenWidth//2) - 250, (screenHeight//2) +120, spellsImg, 0.7)
-    backBtn = Button((screenWidth//2) +300, (screenHeight//2) +300, backImg, 0.7)
-    flamesBtn = Button((screenWidth//2) +320, (screenHeight//2) -100, flameImg, 0.6)
-    darkVeilBtn = Button((screenWidth//2) +320, (screenHeight//2) - 40, darkVeilImg, 0.6)
+    attackBtn = Button(0 + 20, screenHeight - (attackImg.get_height() *2.4), attackImg, 1)
+    healBtn = Button(0 + 20, screenHeight - (healImg.get_height()*1.2), healImg, 1)
+    spellsBtn = Button(0 + spellsImg.get_width()* 0.95, screenHeight - (spellsImg.get_height()*2.4), spellsImg, 1)
+    InventoryBtn = Button(0 + spellsImg.get_width()* 0.95, screenHeight - (healImg.get_height()*1.2), inventoryImg, 1)
+    backBtn = Button(screenWidth - backImg.get_width() * 2.2, screenHeight - backImg.get_height(), backImg, 1)
+    flamesBtn = Button(screenWidth - flameImg.get_width() - 65, screenHeight - spells_menu.get_height() + 10, flameImg, 1)
+    darkVeilBtn = Button(screenWidth - flameImg.get_width() - 65, screenHeight - spells_menu.get_height() + 80, darkVeilImg, 1)
+    purple_flames_btn = Button(screenWidth - flameImg.get_width() - 65, screenHeight - spells_menu.get_height() + 150, purple_flames_img, 1)
+    purple_banana_btn = Button(screenWidth - purple_banana_img.get_width() - 210, screenHeight - inventory_menu.get_height() + 150, purple_banana_img, 1)
+    bomb_btn = Button(screenWidth - purple_banana_img.get_width() - 210, screenHeight - inventory_menu.get_height() + 15, bomb_img, 1)
     buyDarkVeilBtn = Button((screenWidth//2), (screenHeight//2), buyImg, 0.3)
     buyPurpleFlamesBtn = Button(770,0, buyImg, 0.3)
 
-
+    #continues to draw the players buttons to the screen during enemies turn but makes them non functional
     def drawNonFunctionalButtons():
         if attackBtn.draw():
             pass
@@ -278,32 +315,73 @@ def gameplay(currentEnemyNumber=None,enemyHealth=None,playerHealth=None,currentT
             pass
         if spellsBtn.draw():
             pass
-    # turn = 1
-    turn = 1 if currentTurn is None else currentTurn 
     
-    # i increments the enemy number
-    i = 0 if currentEnemyNumber is None else currentEnemyNumber 
-    action_cooldown = 0
-    action_wait_time = 90
+    #opens the spell menu
+    def spellsMenu():
+        global turn
+        global spellsMenuOpen
+        global inventoryMenuOpen
+        inventoryMenuOpen = False
+        win.blit(spells_menu, (screenWidth - spells_menu.get_width(),screenHeight - spells_menu.get_height()))
+        if flame.isBought == True:
+            if flamesBtn.draw():
+                player.useFlame(player,enemyList[i])
+                print(enemyList[i].name + ' HP: '+ str(enemyList[i].hp))
+                turn+=1
+                spellsMenuOpen = False
+        if darkVeil.isBought == True:
+            if darkVeilBtn.draw():
+                if enemyList[i].strength > 5:
+                    player.useDarkVeil(enemyList[i])
+                    print(enemyList[i].name + ' strength has been lowered to:  '+ str(enemyList[i].strength))
+                    turn+=1
+                    spellsMenuOpen = False
+                else:
+                    print('Enemy strength cannot go any lower')
+                    turn+=0
+        if purpleFlames.isBought == True:
+            if purple_flames_btn.draw():
+                player.usePurpleFlame(enemyList[i])
+                print(enemyList[i].name + ' HP: '+ str(enemyList[i].hp))
+                turn+=1
+                spellsMenuOpen = False
+
+        if backBtn.draw():
+            spellsMenuOpen = False
     
-    #win.blit(player.image,(100,100))
-    while run:
-        win.fill((20,20,0))
-        font = pygame.font.SysFont('arialrounded', 25)
-        surface = font.render(player.name + ' HP: ' + str(player.hp), False, (250, 250, 250))
-        win.blit(surface, (1000,20))
-        surface2 = font.render(enemyList[i].name + ' HP: ' + str(enemyList[i].hp), False, (250, 250, 250))
-        win.blit(surface2, (1000,50))
-        win.blit(enemyList[i].image,(100,100))
-        #print(newImage)
-        clock.tick(FPS)
-        for event in pygame.event.get():
+    def inventoryMenu():
+        global spellsMenuOpen
+        global inventoryMenuOpen
+        global turn
         
-            if event.type == pygame.QUIT:
-                run = False
-            
-        #checks if the enemies hp goes below 0 and increments to the next enemy
-        if enemyList[i].hp <= 0:
+        spellsMenuOpen = False
+        win.blit(inventory_menu, (screenWidth - spells_menu.get_width(),screenHeight - spells_menu.get_height()))
+
+        if purple_banana.isBought == True:
+            if purple_banana.quantity > 0:
+                purpleBananaQuantityDisplay = font.render('x'+ str(purple_banana.quantity), True, (250, 250, 250))
+                win.blit(purpleBananaQuantityDisplay, (screenWidth - purple_banana_img.get_width() - 100, screenHeight - inventory_menu.get_height() + 150))
+                if purple_banana_btn.draw():
+                    player.usePurpleBanana()
+                    turn +=1
+                    purple_banana.quantity -= 1
+                    inventoryMenuOpen = False
+        
+        if bomb.isBought == True:
+            if bomb.quantity > 0:
+                bombQuantityDisplay = font.render('x'+ str(bomb.quantity), True, (250, 250, 250))
+                win.blit(bombQuantityDisplay, (screenWidth - purple_banana_img.get_width() - 100, screenHeight - inventory_menu.get_height() + 20))
+                if bomb_btn.draw():
+                    player.useBomb(enemyList[i])
+                    turn+=1
+                    bomb.quantity -= 1
+                    inventoryMenuOpen = False
+
+        if backBtn.draw():
+            inventoryMenuOpen = False
+
+    def enemyDeath():
+            global i, turn, round, run
             i+=1
             #print(i)
             #if the last enemy in the lists hp hits 0 then the game ends and all increments are reset to 0
@@ -320,11 +398,11 @@ def gameplay(currentEnemyNumber=None,enemyHealth=None,playerHealth=None,currentT
                 turn = 1
                 round +=1
                 print('floor: '+ str(i+1))
-
-        #this will open the shop menu every 5 rounds
-        if round % 5 == 0 and round != 0:
+    
+    def shopMenu():
+            global round, shopOpen
             win.fill((30,20,0))
-            coinDisplay = font.render('Your coins: '+ str(player.coins), False, (250, 250, 250))
+            coinDisplay = font.render('Your coins: '+ str(player.coins), True, (250, 250, 250))
             win.blit(coinDisplay, (1050,10))
             shopOpen = True
             
@@ -337,35 +415,30 @@ def gameplay(currentEnemyNumber=None,enemyHealth=None,playerHealth=None,currentT
                     else:
                         print('not enough coins')
             
-            # if purpleFlames.isBought == False:
-            #     win.blit(shopMenu_purpleFlames, (0, 0))
-            #     spellName = font.render(purpleFlames.name, False, (250, 250, 250))
-            #     win.blit(spellName, (180,5))
-            #     spellDescription = font.render(purpleFlames.description, False, (250, 250, 250))
-            #     win.blit(spellDescription, (180,40))
-            #     spellCost = font.render('Cost: ' + str(purpleFlames.coin_cost), False, (250, 250, 250))
-            #     win.blit(spellCost, (180,85))
-            #     if buyPurpleFlamesBtn.draw():
-            #         if player.coins>= purpleFlames.coin_cost:
-            #             player.coins -= purpleFlames.coin_cost
-            #             purpleFlames.isBought = True
-            #             print('Purple Flames bought for ' + str(purpleFlames.coin_cost) + ' coins')
-            #         else:
-            #             print('not enough coins')
+            if purpleFlames.isBought == False:
+                win.blit(shopMenu_purpleFlames, (0, 0))
+                spellName = font.render(purpleFlames.name, True, (250, 250, 250))
+                win.blit(spellName, (180,5))
+                spellDescription = font.render(purpleFlames.description, True, (250, 250, 250))
+                win.blit(spellDescription, (180,40))
+                spellCost = font.render('Cost: ' + str(purpleFlames.coin_cost), True, (250, 250, 250))
+                win.blit(spellCost, (180,85))
+                if buyPurpleFlamesBtn.draw():
+                    if player.coins>= purpleFlames.coin_cost:
+                        player.coins -= purpleFlames.coin_cost
+                        purpleFlames.isBought = True
+                        print('Purple Flames bought for ' + str(purpleFlames.coin_cost) + ' coins')
+                    else:
+                        print('not enough coins')
 
             if backBtn.draw():
                 shopOpen = False
                 round+=1
-        
-
-        #if players hp goes to 0 or below the game ends
-        if player.hp <= 0:
-            run = False
-            gameOver()
-        
-        #if the turn modulus x returns a value of 1 then it is the players turn to pick a move
-        if turn % 2 == 1 and shopOpen == False:
+    
+    #handles the players turn
+    def playerMove():
             if attackBtn.draw():
+                global spellsMenuOpen, inventoryMenuOpen, turn, i
                 spellsMenuOpen = False
                 attack_sound_1.play()
                 timer = 200
@@ -391,34 +464,24 @@ def gameplay(currentEnemyNumber=None,enemyHealth=None,playerHealth=None,currentT
                 print( player.name + ' HP: ' +  str(player.hp))
                 turn+=1
                 
-
+            #If player clicks on the spells button then it sets spellsMenuOpen to true which then will open the spell menu
             if spellsBtn.draw():
                 spellsMenuOpen = True
             
             #opens spell menu
             if spellsMenuOpen == True:
-                win.blit(spells_menu, (943,230))
-                if flame.isBought == True:
-                    if flamesBtn.draw():
-                        player.useFlame(player,enemyList[i])
-                        print(enemyList[i].name + ' HP: '+ str(enemyList[i].hp))
-                        turn+=1
-                        spellsMenuOpen = False
-                if darkVeil.isBought == True:
-                    if darkVeilBtn.draw():
-                        if enemyList[i].strength > 5:
-                            player.useDarkVeil(enemyList[i])
-                            print(enemyList[i].name + ' strength has been lowered to:  '+ str(enemyList[i].strength))
-                            turn+=1
-                            spellsMenuOpen = False
-                        else:
-                            print('Enemy strength cannot go any lower')
-                            turn+=0
-                if backBtn.draw():
-                    spellsMenuOpen = False
+                spellsMenu()
+            
+            if InventoryBtn.draw():
+                inventoryMenuOpen = True
+            
+            if inventoryMenuOpen == True:
+                inventoryMenu()
+    
+    #handles the enemys turn
+    def enemyMove():
+            global turn, i, action_cooldown, action_wait_time
 
-        #if the turn modulus x returns a value of 0 then it is the enemies turn to pick a move
-        if turn % 2 == 0 and shopOpen == False:
             action_cooldown +=1
             rand = random.randint(0,1)
             #print(action_cooldown)
@@ -436,6 +499,46 @@ def gameplay(currentEnemyNumber=None,enemyHealth=None,playerHealth=None,currentT
 
             #this code draws the button too the screen while its the enemies turn but makes the buttons not functional
             drawNonFunctionalButtons()
+
+    while run:
+        win.fill((20,20,0))
+        font = pygame.font.Font('Assets/fonts/Minecraft.ttf', 25)
+        surface = font.render(player.name + ' HP: ' + str(player.hp), True, (250, 250, 250))
+        win.blit(surface, (screenWidth - 300,10))
+        surface2 = font.render(enemyList[i].name + ' HP: ' + str(enemyList[i].hp), True, (250, 250, 250))
+        win.blit(surface2, (screenWidth - 300,50))
+        win.blit(enemyList[i].image,(100,100))
+        #print(newImage)
+        clock.tick(FPS)
+        for event in pygame.event.get():
+        
+            if event.type == pygame.QUIT:
+                run = False
+            
+        #checks if the enemies hp goes below 0
+        if enemyList[i].hp <= 0:
+            enemyDeath()            
+
+        #this will open the shop menu every 5 rounds except for the first round
+        if round % 5 == 0 and round != 0:
+            shopMenu()
+        
+
+        #if players hp goes to 0 or below the game ends
+        if player.hp <= 0:
+            run = False
+            gameOver()
+        
+        #if the turn modulus 2 returns a value of 1 then it is the players turn to pick a move
+        if turn % 2 == 1 and shopOpen == False:
+            playerMove()
+            
+                
+
+        #if the turn modulus 2 returns a value of 0 then it is the enemies turn to pick a move
+        if turn % 2 == 0 and shopOpen == False:
+            enemyMove()
+            
         
         config.set('section_a', 'currentEnemyNumber', 'True')
         config.set('section_a', 'currentEnemyNumber', str(i))
@@ -450,20 +553,19 @@ def gameplay(currentEnemyNumber=None,enemyHealth=None,playerHealth=None,currentT
         with open('config.ini', 'w') as configfile:
             config.write(configfile)
         pygame.display.update()
-    
+
+
+
 def creditsMenu():
     run = True
     win.blit(bg, (0, 0))
-    backBtn = Button((screenWidth//2) -580, (screenHeight//2) +250, backImg, 0.8)
+    backBtn = Button((screenWidth - screenWidth * 0.98), (screenHeight - screenHeight * 0.12), backImg, 1)
     
     while run:
-    
         clock.tick(FPS)
         for event in pygame.event.get():
-        
             if event.type == pygame.QUIT:
                 run = False
-        
         if backBtn.draw():
             run = False
             menu()
@@ -476,14 +578,10 @@ def gameOver():
     win.blit(game_over, ((screenWidth//2) -350 , 0))
     
     while run:
-    
         clock.tick(FPS)
         for event in pygame.event.get():
-        
             if event.type == pygame.QUIT:
                 run = False
-        
-        
 
         pygame.display.update()
  
