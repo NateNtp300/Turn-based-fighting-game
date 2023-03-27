@@ -23,6 +23,7 @@ screenHeight = pygame.display.get_desktop_sizes()[0][1] * 0.93
 black = (0,0,0)
 red = (255,0,0)
 white = (255,255,255)
+masterRun = True
 
 win = pygame.display.set_mode((screenWidth,screenHeight))
 
@@ -49,6 +50,7 @@ buyImg = pygame.image.load('Assets/buttons/buy.png').convert_alpha()
 bomb_img = pygame.image.load('Assets/items/bomb_btn.png').convert_alpha()
 broccoli_img = pygame.image.load('Assets/items/broccoli_btn.png').convert_alpha()
 purple_banana_img = pygame.image.load('Assets/items/purple_banana_btn.png').convert_alpha()
+sus_liquid_img = pygame.image.load('Assets/items/sus_liquid_btn.png').convert_alpha()
 browse_spells_img = pygame.image.load('Assets/buttons/browse_spells.png').convert_alpha()
 browse_items_img = pygame.image.load('Assets/buttons/browse_items.png').convert_alpha()
 punch_img = pygame.image.load('Assets/attacks/punch_btn.png').convert_alpha()
@@ -76,7 +78,7 @@ class Spells():
         self.hp+=20
     
     def useFlame(self,player,target):
-        damage = 10 + player.magicStrength - target.magicDefence
+        damage = 100 + player.magicStrength - target.magicDefence
         if damage > 0:
             target.hp -= damage
         if damage <= 0:
@@ -109,12 +111,13 @@ class Spells():
 
 class Attacks():
     
-    def __init__(self, name, energy_cost, coin_cost, description, isBought):
+    def __init__(self, name, energy_cost, coin_cost, description, isBought, column):
         self.name = name
         self.energy_cost = energy_cost
         self.coin_cost = coin_cost
         self.description = description
         self.isBought = isBought
+        self.column = column
     
     def usePunch(self, player, target, handle):
         damage = 5 + player.strength - target.physicalDefence
@@ -143,12 +146,13 @@ class Attacks():
 
 
 class Items():
-    def __init__(self, name, description, coin_cost, quantity, isBought):
+    def __init__(self, name, description, coin_cost, quantity, isBought, column):
         self.name = name
         self.description = description
         self.coin_cost = coin_cost
         self.quantity = quantity
         self.isBought = isBought
+        self.column = column
 
     def useBomb(self,target):
         damage = 30
@@ -186,15 +190,6 @@ class Player(Spells, Items, Attacks):
         self.energy = energy
         self.image = pygame.image.load(image).convert_alpha()
         self.coins = 0
-    #attack method that can be called to deal damage to enemy or player
-    def punch(self, target):
-        damage = self.strength - target.physicalDefence
-        if damage > 0:
-            target.hp -= damage
-            print('you did ' + str(damage) + ' damage')
-        if damage <= 0: 
-            target.hp = target.hp
-            print('Enemy defence is too high. no damage done')
 
     
 #heal method that will heal the player unless their hp is already full and if their hp is not full it still can not exceed 100
@@ -219,9 +214,12 @@ class EnemyMoves():
         print('Enemy healed')
     
     def basicAttack(self, target):
-        damage = self.strength
-        target.hp -= damage
-        print('Enemy attacked')
+        damage = self.strength - target.physicalDefence
+        if damage > 0:
+            target.hp -= damage
+            ('Enemy attacked')
+        if damage <=0:
+            print('No damage done. Your physical defence blocked the attack')
     
     def strengthBoost(self,target):
         self.strength+=5
@@ -238,10 +236,7 @@ class Enemy(Spells, EnemyMoves):
         self.image = pygame.image.load(image).convert_alpha()
         self.move1 = move1
         self.move2 = move2
-    #attack method that can be called to deal damage to enemy or player
-    def attack(self, target):
-        damage = self.strength
-        target.hp -= damage
+        
 
     
 #heal method that will heal the player unless their hp is already full and if their hp is not full it still can not exceed 100
@@ -268,21 +263,48 @@ class Button():
         action = False
         #get mouse position
         pos = pygame.mouse.get_pos()
-
+        
         #check if mouse is over button and check click conditions
+        
         if self.rect.collidepoint(pos):
             #print('hover')
+            
             #[0] means left click
             if pygame.mouse.get_pressed()[0] == 1 and self.clicked == False:
                 self.clicked = True
                 action = True
                 #print('clicked')
+        
         if pygame.mouse.get_pressed()[0] == 0:
             self.clicked = False
 
         win.blit(self.image, (self.rect.x, self.rect.y))
 
         return action
+    def drawBtn(self):
+        win.blit(self.image, (self.rect.x, self.rect.y))
+    
+    def hover(self, target):
+        #font = pygame.font.Font('Assets/fonts/Minecraft.ttf', 25)
+        font = pygame.font.SysFont('verdana', 20)
+        pos = pygame.mouse.get_pos()
+        if self.rect.collidepoint(pos):
+            #print(self.rect.x)
+            if target.column == 1:
+                surface = font.render(target.description, True, (250,250,250))
+                pygame.draw.rect(win,(0,0,0), pygame.Rect(self.rect.x -20, self.rect.y -20, surface.get_width(),20))
+                win.blit(surface,(self.rect.x -20, self.rect.y -25))
+                #print(target.description)
+            elif target.column == 2:
+                surface = font.render(target.description, True, (250,250,250))
+                pygame.draw.rect(win,(0,0,0), pygame.Rect(self.rect.x -100, self.rect.y -20, surface.get_width(),20))
+                win.blit(surface,(self.rect.x -100, self.rect.y -25))
+            elif target.column == 3:
+                pass
+            else:
+                pass
+    
+
 
 
 
@@ -296,8 +318,10 @@ class Button():
 
 #testEnemy.move1(testEnemy)
 
+    
 def menu():
-
+    
+    
     savegameExist = config.getboolean('section_a', 'savegameExist')
     currentEnemyNumber = config.getint('section_a', 'currentEnemyNumber')
     enemyHealth = config.getint('section_a', 'enemyHealth')
@@ -314,39 +338,57 @@ def menu():
     
 
     run = True
-    
-    #win.fill((250,0,0))
-    win.blit(bg, (0, 0))
     continue_g = Button((screenWidth/2) - (continueImg.get_width()/2), (screenHeight//2) - 330, continueImg, 1)
     startBtn = Button((screenWidth/2) - (startImg.get_width()/2), (screenHeight//2) - 150, startImg, 1)
     creditsBtn = Button((screenWidth//2) - (creditsImg.get_width()/2), (screenHeight//2) +30, creditsImg, 1)
     quitBtn = Button((screenWidth//2) - (quitImg.get_width()/2), (screenHeight//2) +210, quitImg, 1)
-    
+    #win.fill((250,0,0))
+    def drawMenuBtns():
+        win.blit(bg, (0, 0))
+        continue_g.drawBtn()
+        startBtn.drawBtn()
+        creditsBtn.drawBtn()
+        quitBtn.drawBtn()
+        
+        
+    drawMenuBtns()
     
     while run:
+        global masterRun
+
+        if masterRun == False:
+            run = False
+            break
         clock.tick(FPS)
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 run = False
+                break
         
         if startBtn.draw():
             button_sound_1.play()
-            run = False
+            #run = False
             gameplay()
+            drawMenuBtns()
+
 
         if creditsBtn.draw():
             button_sound_1.play()
-            run = False
+            #run = False
             creditsMenu()
+            drawMenuBtns()
+            #break
 
         if quitBtn.draw():
             #button_sound_1.play()
             run = False
+            break
 
         if continue_g.draw():
             button_sound_1.play()
-            run = False
+            #run = False
             gameplay(currentEnemyNumber,enemyHealth,playerHealth,currentTurn,enemyStrength,playerStrength,currentRound,currentCoins, darkVeilbought)
+            drawMenuBtns()
 
         pygame.display.update()
 # currentEnemyNumber,enemyHealth,playerHealth,currentTurn
@@ -396,12 +438,13 @@ def gameplay(currentEnemyNumber=None,enemyHealth=None,playerHealth=None,currentT
     darkVeil = Spells('Dark Veil',10,30,'Lowers enemy strength by one', False)
     purpleFlames = Spells('Purple Flames', 20, 20, 'Searing purple flames that deal 50 dark damage', False)
 
-    bomb = Items('Bomb','Deals 30 damage to enemies and ignores their defence',10,2,True)
-    purple_banana = Items('Purple Banana','Heals 30 HP',10,2,True)
-    broccoli = Items('Broccoli','Raises physical strength by 5 for one round',10,2,True)
+    bomb = Items('Bomb','Deals 30 damage to enemies and ignores their defence',10,2,True,1)
+    purple_banana = Items('Purple Banana','Heals 30 HP',10,2,True,1)
+    broccoli = Items('Broccoli','Raises physical strength by 5 for one round',10,2,True,1)
+    sus_liquid = Items('Sus Liquid','Has a random beneficial effect, Or possibly a negative',10,2,True,2)
 
-    punch = Attacks('Punch',0,0,'Punches the enemy', True)
-    pierce = Attacks('Pierce',5,20,'Pierces the enemy', True)
+    punch = Attacks('Punch',0,0,'[Punch] Deals 5 base damage. Energy cost: 0', True, 1)
+    pierce = Attacks('Pierce',5,20,'[Pierce] Deals 10 base damage. Energy cost: 5', True, 1)
 
     gameplayHandle = GameplayHandle(1)
 
@@ -436,12 +479,14 @@ def gameplay(currentEnemyNumber=None,enemyHealth=None,playerHealth=None,currentT
     purple_banana_btn = Button(screenWidth - purple_banana_img.get_width() - 550, screenHeight - inventory_menu.get_height() + 150, purple_banana_img, 1)
     bomb_btn = Button(screenWidth - purple_banana_img.get_width() - 550, screenHeight - inventory_menu.get_height() + 20, bomb_img, 1)
     broccoli_btn = Button(screenWidth - broccoli_img.get_width() - 550, screenHeight - inventory_menu.get_height() + 280, broccoli_img, 1)
+    sus_liquid_btn = Button(screenWidth - sus_liquid_img.get_width() - 390, screenHeight - inventory_menu.get_height() + 20, sus_liquid_img, 1)
     buyDarkVeilBtn = Button((screenWidth//2), (screenHeight//2), buyImg, 0.3)
     buyPurpleFlamesBtn = Button(770,0, buyImg, 0.3)
     browse_spells_btn = Button(0 + browse_spells_img.get_width() - 320, screenHeight - browse_spells_img.get_height() -10, browse_spells_img, 1)
     browse_items_btn = Button(0 + browse_items_img.get_width() + 30, screenHeight - browse_items_img.get_height() -10, browse_items_img, 1)
     punch_btn = Button(screenWidth - punch_img.get_width() - 550, screenHeight - attack_menu.get_height() + 20, punch_img, 1)
     pierce_btn = Button(screenWidth - pierce_img.get_width() - 550, screenHeight - attack_menu.get_height() + 150, pierce_img, 1) 
+    
 
     #continues to draw the players buttons to the screen during enemies turn but makes them non functional
     def drawNonFunctionalButtons():
@@ -495,6 +540,7 @@ def gameplay(currentEnemyNumber=None,enemyHealth=None,playerHealth=None,currentT
             if purple_banana.quantity > 0:
                 purpleBananaQuantityDisplay = font.render('x'+ str(purple_banana.quantity), True, (250, 250, 250))
                 win.blit(purpleBananaQuantityDisplay, (screenWidth - purple_banana_img.get_width() - 440, screenHeight - inventory_menu.get_height() + 150))
+                purple_banana_btn.hover(purple_banana)
                 if purple_banana_btn.draw():
                     player.usePurpleBanana()
                     gameplayHandle.turn +=1
@@ -505,21 +551,35 @@ def gameplay(currentEnemyNumber=None,enemyHealth=None,playerHealth=None,currentT
             if bomb.quantity > 0:
                 bombQuantityDisplay = font.render('x'+ str(bomb.quantity), True, (250, 250, 250))
                 win.blit(bombQuantityDisplay, (screenWidth - purple_banana_img.get_width() - 440, screenHeight - inventory_menu.get_height() + 20))
+                bomb_btn.hover(bomb)
                 if bomb_btn.draw():
                     player.useBomb(enemyList[i])
                     gameplayHandle.turn +=1
                     bomb.quantity -= 1
                     inventoryMenuOpen = False
                 
+                
 
         if broccoli.isBought == True:
             if broccoli.quantity > 0:
                 broccoliQuantityDisplay = font.render('x'+ str(broccoli.quantity), True, (250, 250, 250))
                 win.blit(broccoliQuantityDisplay, (screenWidth - purple_banana_img.get_width() - 440, screenHeight - inventory_menu.get_height() +280 ))
+                broccoli_btn.hover(broccoli)
                 if broccoli_btn.draw():
                     player.useBroccoli()
                     gameplayHandle.turn +=1
                     broccoli.quantity -=1
+                    inventoryMenuOpen = False
+
+        if sus_liquid.isBought == True:
+            if sus_liquid.quantity > 0:
+                susLiquidQuantityDisplay = font.render('x'+ str(sus_liquid.quantity), True, (250, 250, 250))
+                win.blit(susLiquidQuantityDisplay, (screenWidth - sus_liquid_img.get_width() - 280, screenHeight - inventory_menu.get_height() +20 ))
+                sus_liquid_btn.hover(sus_liquid)
+                if sus_liquid_btn.draw():
+                    player.useSusLiquid()
+                    gameplayHandle.turn +=1
+                    sus_liquid.quantity -=1
                     inventoryMenuOpen = False
 
         if backBtn.draw():
@@ -532,10 +592,11 @@ def gameplay(currentEnemyNumber=None,enemyHealth=None,playerHealth=None,currentT
             #if the last enemy in the lists hp hits 0 then the game ends and all increments are reset to 0
             if i >= len(enemyList):
                 run = False
-                menu()
+                #menu()
                 gameplayHandle.turn = 1
                 i=0
                 round = 0
+                
             #if it is not the last enemy in the list the game continues and turn counter is set back to 1
             else:
                 #floorTransition()
@@ -603,17 +664,18 @@ def gameplay(currentEnemyNumber=None,enemyHealth=None,playerHealth=None,currentT
         spellsMenuOpen = False
         inventoryMenuOpen = False
         win.blit(attack_menu, (screenWidth - attack_menu.get_width(),screenHeight - attack_menu.get_height()))
-        if punch.isBought == True:   
+        if punch.isBought == True:
+            punch_btn.hover(punch)   
             if punch_btn.draw():
                 player.usePunch(player,enemyList[i], gameplayHandle)
         
         if pierce.isBought == True:
+            pierce_btn.hover(pierce)
             if pierce_btn.draw():
                 player.usePierce(player,enemyList[i], gameplayHandle)
         
         if backBtn.draw():
             attackMenuOpen = False
-
 
     #handles the players turn
     def playerMove():
@@ -724,8 +786,10 @@ def gameplay(currentEnemyNumber=None,enemyHealth=None,playerHealth=None,currentT
         for event in pygame.event.get():
         
             if event.type == pygame.QUIT:
+                global masterRun
+                masterRun = False
                 run = False
-            
+                break
         
 
         #checks if the enemies hp goes below 0
@@ -748,6 +812,7 @@ def gameplay(currentEnemyNumber=None,enemyHealth=None,playerHealth=None,currentT
         if player.hp <= 0:
             run = False
             gameOver()
+            break
         
         #if the turn modulus 2 returns a value of 1 then it is the players turn to pick a move
         if gameplayHandle.turn % 2 == 1 and shopOpen == False and roundOver == False and intro == False:
@@ -779,7 +844,30 @@ def gameplay(currentEnemyNumber=None,enemyHealth=None,playerHealth=None,currentT
 def creditsMenu():
     run = True
     win.blit(bg, (0, 0))
+    #win.fill((0,0,0))
     backBtn = Button((screenWidth - screenWidth * 0.98), (screenHeight - screenHeight * 0.12), backImg, 1)
+    
+    def drawMenuBtns():
+        win.blit(bg, (0, 0))
+        backBtn.drawBtn()
+    while run:
+        clock.tick(FPS)
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                run = False
+            
+        if backBtn.draw():
+            run = False  
+            #menu()
+
+        pygame.display.update()
+
+def gameOver():
+    run = True
+    win.fill((0,0,0))
+    win.blit(game_over, ((screenWidth//2) -350 , 0))
+    backBtn = Button(screenWidth - backImg.get_width() * 2.2, screenHeight - backImg.get_height(), backImg, 1)
+    
     
     while run:
         clock.tick(FPS)
@@ -788,20 +876,8 @@ def creditsMenu():
                 run = False
         if backBtn.draw():
             run = False
-            menu()
-
-        pygame.display.update()
-
-def gameOver():
-    run = True
-    win.fill((0,0,0))
-    win.blit(game_over, ((screenWidth//2) -350 , 0))
-    
-    while run:
-        clock.tick(FPS)
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                run = False
+            #menu()
+            
 
         pygame.display.update()
  
