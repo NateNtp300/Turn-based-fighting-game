@@ -24,6 +24,8 @@ black = (0,0,0)
 red = (255,0,0)
 white = (255,255,255)
 masterRun = True
+musicVolume = 0.5
+volx = 0
 
 win = pygame.display.set_mode((screenWidth,screenHeight))
 
@@ -33,8 +35,14 @@ bg = pygame.image.load('Assets/background.png').convert_alpha()
 game_over = pygame.image.load('Assets/game_over.png').convert_alpha()
 continueImg = pygame.image.load('Assets/buttons/continue.png').convert_alpha()
 startImg = pygame.image.load('Assets/buttons/start_game.png').convert_alpha()
+startHighlightImg = pygame.image.load('Assets/buttons/start_game_highlight.png').convert_alpha()
 quitImg = pygame.image.load('Assets/buttons/quit.png').convert_alpha()
 creditsImg = pygame.image.load('Assets/buttons/credits.png').convert_alpha()
+optionsImg = pygame.image.load('Assets/buttons/options.png').convert_alpha()
+volume_left_img = pygame.image.load('Assets/buttons/volume_left.png').convert_alpha()
+volume_right_img = pygame.image.load('Assets/buttons/volume_right.png').convert_alpha()
+volume_pointer_img = pygame.image.load('Assets/options/volume_pointer.png').convert_alpha()
+volume_slider_img = pygame.image.load('Assets/options/volume_slider.png').convert_alpha()
 backImg = pygame.image.load('Assets/buttons/back.png').convert_alpha()
 attackImg = pygame.image.load('Assets/buttons/attack.png').convert_alpha()
 healImg = pygame.image.load('Assets/buttons/heal.png').convert_alpha()
@@ -283,6 +291,12 @@ class Button():
         return action
     def drawBtn(self):
         win.blit(self.image, (self.rect.x, self.rect.y))
+    def highLightBtn(self):
+        hover_sound = mixer.Sound('Assets/sounds/hover_sound.mp3')
+        pos = pygame.mouse.get_pos()
+        if self.rect.collidepoint(pos):
+            win.blit(self.image, (self.rect.x, self.rect.y))
+            #hover_sound.play()
     
     def hover(self, target):
         #font = pygame.font.Font('Assets/fonts/Minecraft.ttf', 25)
@@ -318,10 +332,10 @@ class Button():
 
 #testEnemy.move1(testEnemy)
 
-    
+pygame.mixer.music.set_volume(musicVolume)    
 def menu():
     
-    
+    global musicVolume
     savegameExist = config.getboolean('section_a', 'savegameExist')
     currentEnemyNumber = config.getint('section_a', 'currentEnemyNumber')
     enemyHealth = config.getint('section_a', 'enemyHealth')
@@ -334,14 +348,19 @@ def menu():
     darkVeilbought = config.getboolean('section_a', 'darkVeilbought')
 
     #import sounds
+    
+    pygame.mixer.music.load('Assets/music/game_intro.mp3')
     button_sound_1 = mixer.Sound('Assets/sounds/button_sound_1.wav')
     
 
     run = True
     continue_g = Button((screenWidth/2) - (continueImg.get_width()/2), (screenHeight//2) - 330, continueImg, 1)
+    startHighLightBtn = Button((screenWidth/2) - (startHighlightImg.get_width()/2), (screenHeight//2) - 150, startHighlightImg, 1)
     startBtn = Button((screenWidth/2) - (startImg.get_width()/2), (screenHeight//2) - 150, startImg, 1)
+    
     creditsBtn = Button((screenWidth//2) - (creditsImg.get_width()/2), (screenHeight//2) +30, creditsImg, 1)
     quitBtn = Button((screenWidth//2) - (quitImg.get_width()/2), (screenHeight//2) +210, quitImg, 1)
+    optionsBtn = Button(50,50, optionsImg, 1)
     #win.fill((250,0,0))
     def drawMenuBtns():
         win.blit(bg, (0, 0))
@@ -349,12 +368,18 @@ def menu():
         startBtn.drawBtn()
         creditsBtn.drawBtn()
         quitBtn.drawBtn()
+        optionsBtn.drawBtn()
         
-        
+    def playMusic():
+        mixer.music.play(-1)
+    playMusic()
+    
     drawMenuBtns()
+    
     
     while run:
         global masterRun
+        
 
         if masterRun == False:
             run = False
@@ -366,11 +391,14 @@ def menu():
                 break
         
         if startBtn.draw():
+            pygame.mixer.music.stop()
             button_sound_1.play()
             #run = False
             gameplay()
             drawMenuBtns()
-
+            playMusic()
+        
+            
 
         if creditsBtn.draw():
             button_sound_1.play()
@@ -390,7 +418,15 @@ def menu():
             gameplay(currentEnemyNumber,enemyHealth,playerHealth,currentTurn,enemyStrength,playerStrength,currentRound,currentCoins, darkVeilbought)
             drawMenuBtns()
 
+        if optionsBtn.draw():
+            button_sound_1.play()
+            optionsMenu()
+            drawMenuBtns()
+        
+        startHighLightBtn.highLightBtn()
+
         pygame.display.update()
+
 # currentEnemyNumber,enemyHealth,playerHealth,currentTurn
 def gameplay(currentEnemyNumber=None,enemyHealth=None,playerHealth=None,currentTurn=None, enemyStrength=None, playerStrength=None, currentRound=None, currentCoins=None, darkVeilbought=None):
     
@@ -859,6 +895,71 @@ def creditsMenu():
         if backBtn.draw():
             run = False  
             #menu()
+
+        pygame.display.update()
+
+def optionsMenu():
+    global musicVolume
+    
+    global volx
+    
+    run = True
+    win.blit(bg, (0, 0))
+    #win.fill((0,0,0))
+    
+    slider_sound = mixer.Sound('Assets/sounds/slider_click.mp3')
+    
+    volumeLeft = Button((screenWidth/2) - (volume_left_img.get_width()/2) - 200, (screenHeight//2) - 400, volume_left_img, 1)
+    volumeRight = Button((screenWidth/2) - (volume_right_img.get_width()/2) + 200, (screenHeight//2) - 400, volume_right_img, 1)
+    backBtn = Button((screenWidth - screenWidth * 0.98), (screenHeight - screenHeight * 0.12), backImg, 1)
+    
+    # def drawMenuBtns():
+    #     win.blit(bg, (0, 0))
+    #     backBtn.drawBtn()
+    while run:
+        win.blit(bg, (0, 0))
+        win.blit(volume_slider_img, ((screenWidth/2) - (volume_slider_img.get_width()/2) , (screenHeight//2) - 435))
+        win.blit(volume_pointer_img, ((screenWidth/2) - (volume_pointer_img.get_width()/2) - volx , (screenHeight//2) - 415))
+        font = pygame.font.Font('Assets/fonts/MorrisRomanBlack.ttf', 25)
+        volumeSurface = font.render('Music Volume: ' + str(round(musicVolume*100)) , True, (250, 250, 250))
+        win.blit(volumeSurface, ((screenWidth/2) - (volume_slider_img.get_width()/2) , (screenHeight//2) - 435))
+        clock.tick(FPS)
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                run = False
+            
+        if backBtn.draw():
+            run = False  
+            #menu()
+        if volumeLeft.draw():
+            #print('vol left')
+            
+            musicVolume-=0.05
+            pygame.mixer.music.set_volume(musicVolume) 
+            if musicVolume <= 0:
+                musicVolume = 0
+                pygame.mixer.music.set_volume(musicVolume)
+            if volx ==100:
+                volx+=0
+            else:
+                volx+=10
+                slider_sound.play() 
+
+        if volumeRight.draw():
+            #print('vol right')
+            musicVolume+=0.05
+            pygame.mixer.music.set_volume(musicVolume)
+            #print(musicVolume)
+            if musicVolume >= 1:
+                musicVolume = 1
+                pygame.mixer.music.set_volume(musicVolume)
+            if volx ==-100:
+                volx-=0
+            else:
+                volx-=10
+                slider_sound.play()
+                
+
 
         pygame.display.update()
 
