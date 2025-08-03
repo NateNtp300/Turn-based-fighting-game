@@ -1,0 +1,5 @@
+# save game state
+config.ini
+# CPython bytecode
+*.pyc
+__pycache__/
